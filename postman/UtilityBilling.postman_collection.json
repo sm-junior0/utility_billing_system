@@ -1,0 +1,434 @@
+{
+  "info": {
+    "_postman_id": "2e0b3ea6-69da-4b0f-b780-utility-billing",
+    "name": "Utility Billing System API",
+    "description": "Postman collection for OTP registration, JWT authentication, user management, billing, payments, configuration, and notifications.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "adminToken", "value": "" },
+    { "key": "customerToken", "value": "" },
+    { "key": "financeToken", "value": "" },
+    { "key": "operatorToken", "value": "" },
+    { "key": "signupEmail", "value": "customer1@utility.rw" },
+    { "key": "otpCode", "value": "" },
+    { "key": "userId", "value": "2" },
+    { "key": "customerId", "value": "1" },
+    { "key": "meterId", "value": "1" },
+    { "key": "readingId", "value": "1" },
+    { "key": "billId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullNames\": \"Customer User\",\n  \"email\": \"{{signupEmail}}\",\n  \"phoneNumber\": \"250788999111\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/signup"
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{signupEmail}}\",\n  \"otpCode\": \"{{otpCode}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/verify-otp"
+          }
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{signupEmail}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/resend-otp"
+          }
+        },
+        {
+          "name": "Login Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@utility.rw\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Login Registered User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{signupEmail}}\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - User Management",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/users"
+          }
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/users/{{userId}}"
+          }
+        },
+        {
+          "name": "Change User Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}/status"
+          }
+        },
+        {
+          "name": "Change User Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ROLE_OPERATOR\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}/role"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer Management",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullNames\": \"Alice Uwase\",\n  \"nationalId\": \"1199912345678901\",\n  \"email\": \"alice@client.rw\",\n  \"phoneNumber\": \"250788123456\",\n  \"address\": \"Kigali, Gasabo\",\n  \"status\": \"ACTIVE\",\n  \"ownerUserId\": {{userId}}\n}"
+            },
+            "url": "{{baseUrl}}/api/customers"
+          }
+        },
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/customers"
+          }
+        },
+        {
+          "name": "Get Customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/customers/{{customerId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Meter Management",
+      "item": [
+        {
+          "name": "Create Water Meter",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterNumber\": \"WTR-0001\",\n  \"meterType\": \"WATER\",\n  \"installationDate\": \"2026-01-10\",\n  \"status\": \"ACTIVE\",\n  \"customerId\": {{customerId}}\n}"
+            },
+            "url": "{{baseUrl}}/api/meters"
+          }
+        },
+        {
+          "name": "List Meters",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/meters"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Meter Reading Management",
+      "item": [
+        {
+          "name": "Capture Reading",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{operatorToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterId\": {{meterId}},\n  \"previousReading\": 100,\n  \"currentReading\": 135,\n  \"readingDate\": \"2026-06-01\"\n}"
+            },
+            "url": "{{baseUrl}}/api/readings"
+          }
+        },
+        {
+          "name": "List Readings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/readings"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Configuration Management",
+      "item": [
+        {
+          "name": "Create Tax",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"VAT\",\n  \"percentage\": 18,\n  \"active\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/taxes"
+          }
+        },
+        {
+          "name": "Create Penalty",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Late Payment Penalty\",\n  \"percentage\": 5,\n  \"active\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/penalties"
+          }
+        },
+        {
+          "name": "Create Service Charge",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterType\": \"WATER\",\n  \"amount\": 500,\n  \"active\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/service-charges"
+          }
+        },
+        {
+          "name": "Create Water Tariff",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterType\": \"WATER\",\n  \"tariffType\": \"FLAT\",\n  \"version\": 1,\n  \"effectiveFrom\": \"2026-01-01\",\n  \"flatUnitPrice\": 340\n}"
+            },
+            "url": "{{baseUrl}}/api/tariffs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Billing Management",
+      "item": [
+        {
+          "name": "Generate Bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"readingId\": {{readingId}}\n}"
+            },
+            "url": "{{baseUrl}}/api/bills/generate"
+          }
+        },
+        {
+          "name": "Approve Bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/bills/{{billId}}/approve"
+          }
+        },
+        {
+          "name": "List Bills",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/bills"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment Management",
+      "item": [
+        {
+          "name": "Record Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"billId\": {{billId}},\n  \"amountPaid\": 5000,\n  \"paymentMethod\": \"MOBILE_MONEY\",\n  \"paymentDate\": \"2026-06-05\"\n}"
+            },
+            "url": "{{baseUrl}}/api/payments"
+          }
+        },
+        {
+          "name": "Get Payments By Bill",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/payments/bill/{{billId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Legacy Prepaid Management",
+      "item": [
+        {
+          "name": "Electricity Prepaid Top-Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterId\": 2,\n  \"amount\": 2000,\n  \"paymentMethod\": \"MOBILE_MONEY\",\n  \"transactionDate\": \"2026-06-05\"\n}"
+            },
+            "url": "{{baseUrl}}/api/prepaid/topup"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notification Management",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/notifications"
+          }
+        },
+        {
+          "name": "Get Customer Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/notifications/customer/{{customerId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,136 @@
+package org.smj.utilitybilling.service;
+
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.smj.utilitybilling.dto.request.CustomerRequest;
+import org.smj.utilitybilling.dto.response.CustomerResponse;
+import org.smj.utilitybilling.entity.Customer;
+import org.smj.utilitybilling.entity.UserAccount;
+import org.smj.utilitybilling.enums.Role;
+import org.smj.utilitybilling.enums.UserStatus;
+import org.smj.utilitybilling.exception.BadRequestException;
+import org.smj.utilitybilling.exception.ResourceNotFoundException;
+import org.smj.utilitybilling.repository.CustomerRepository;
+import org.smj.utilitybilling.repository.UserAccountRepository;
+import org.smj.utilitybilling.util.ResponseMapper;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+/**
+ * Service layer implementing Customer business rules.
+ */
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class CustomerService {
+
+    private final CustomerRepository customerRepository;
+    private final UserAccountRepository userAccountRepository;
+
+    @Transactional
+    public CustomerResponse createCustomer(CustomerRequest request) {
+        validateUniqueFields(request, null);
+        Customer customer = buildCustomer(new Customer(), request);
+        return ResponseMapper.toCustomerResponse(customerRepository.save(customer));
+    }
+
+    public List<CustomerResponse> getAllCustomers() {
+        return customerRepository.findAll().stream()
+                .map(ResponseMapper::toCustomerResponse)
+                .toList();
+    }
+
+    public CustomerResponse getCustomer(Long id, String email, boolean customerAccess) {
+        if (customerAccess) {
+            Customer customer = customerRepository.findByOwnerUserEmail(email)
+                    .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
+            if (!customer.getId().equals(id)) {
+                throw new BadRequestException("You can only view your own customer record");
+            }
+            return ResponseMapper.toCustomerResponse(customer);
+        }
+        return ResponseMapper.toCustomerResponse(getCustomerEntity(id));
+    }
+
+    @Transactional
+    public CustomerResponse updateCustomer(Long id, CustomerRequest request) {
+        validateUniqueFields(request, id);
+        Customer customer = getCustomerEntity(id);
+        return ResponseMapper.toCustomerResponse(customerRepository.save(buildCustomer(customer, request)));
+    }
+
+    @Transactional
+    public CustomerResponse updateStatus(Long id, UserStatus status) {
+        Customer customer = getCustomerEntity(id);
+        customer.setStatus(status);
+        return ResponseMapper.toCustomerResponse(customer);
+    }
+
+    public Customer getCustomerEntity(Long id) {
+        return customerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Customer with ID " + id + " was not found. "
+                                + "Create the customer first with POST /api/customers, then use the returned customer id for meters."
+                ));
+    }
+
+    private Customer buildCustomer(Customer customer, CustomerRequest request) {
+        customer.setFullNames(request.getFullNames());
+        customer.setNationalId(request.getNationalId());
+        customer.setEmail(request.getEmail());
+        customer.setPhoneNumber(request.getPhoneNumber());
+        customer.setAddress(request.getAddress());
+        customer.setStatus(request.getStatus() == null ? UserStatus.ACTIVE : request.getStatus());
+
+        if (request.getOwnerUserId() != null) {
+            customer.setOwnerUser(resolveOwnerUser(request.getOwnerUserId(), customer.getId()));
+        } else {
+            customer.setOwnerUser(null);
+        }
+        return customer;
+    }
+
+    private UserAccount resolveOwnerUser(Long ownerUserId, Long currentCustomerId) {
+        UserAccount ownerUser = userAccountRepository.findById(ownerUserId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Owner user with ID " + ownerUserId + " was not found. "
+                                + "Use GET /api/users after signup to get the real userId from the signup response or user list."
+                ));
+        if (ownerUser.getRole() != Role.ROLE_CUSTOMER) {
+            throw new BadRequestException(
+                    "Only users with ROLE_CUSTOMER can be linked to a customer. "
+                            + "User " + ownerUserId + " (" + ownerUser.getEmail() + ") has role " + ownerUser.getRole() + "."
+            );
+        }
+        if (ownerUser.getStatus() != UserStatus.ACTIVE) {
+            throw new BadRequestException(
+                    "Owner user must be ACTIVE before linking. "
+                            + "User " + ownerUserId + " (" + ownerUser.getEmail() + ") has status " + ownerUser.getStatus()
+                            + ". Verify OTP first, then retry customer creation."
+            );
+        }
+        customerRepository.findByOwnerUserId(ownerUserId).ifPresent(existing -> {
+            if (currentCustomerId == null || !existing.getId().equals(currentCustomerId)) {
+                throw new BadRequestException(
+                        "User " + ownerUserId + " is already linked to customer ID " + existing.getId() + "."
+                );
+            }
+        });
+        return ownerUser;
+    }
+
+    private void validateUniqueFields(CustomerRequest request, Long customerId) {
+        customerRepository.findAll().forEach(existing -> {
+            boolean sameId = customerId != null && existing.getId().equals(customerId);
+            if (!sameId && existing.getNationalId().equals(request.getNationalId())) {
+                throw new BadRequestException("National ID is already registered");
+            }
+            if (!sameId && existing.getEmail().equalsIgnoreCase(request.getEmail())) {
+                throw new BadRequestException("Customer email is already registered");
+            }
+            if (!sameId && existing.getPhoneNumber().equals(request.getPhoneNumber())) {
+                throw new BadRequestException("Customer phone number is already registered");
+            }
+        });
+    }
+}
