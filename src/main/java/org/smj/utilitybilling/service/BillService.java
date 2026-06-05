@@ -5,11 +5,13 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.smj.utilitybilling.dto.request.BillGenerationRequest;
 import org.smj.utilitybilling.dto.response.BillResponse;
+import org.smj.utilitybilling.dto.response.PageResponse;
 import org.smj.utilitybilling.entity.Bill;
 import org.smj.utilitybilling.entity.Customer;
 import org.smj.utilitybilling.entity.Meter;
@@ -27,8 +29,11 @@ import org.smj.utilitybilling.enums.UserStatus;
 import org.smj.utilitybilling.exception.BadRequestException;
 import org.smj.utilitybilling.exception.ResourceNotFoundException;
 import org.smj.utilitybilling.repository.BillRepository;
+import org.smj.utilitybilling.util.PageableUtils;
 import org.smj.utilitybilling.util.ResponseMapper;
 import jakarta.persistence.EntityManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -43,6 +48,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BillService {
+
+    private static final Set<String> ALLOWED_BILL_SORT_FIELDS = Set.of(
+            "id", "billReference", "billingMonth", "billingYear", "dueDate", "consumption",
+            "totalAmount", "amountPaid", "outstandingBalance", "status", "approvedAt", "createdAt", "updatedAt");
 
     private final BillRepository billRepository;
     private final MeterReadingService meterReadingService;
@@ -129,22 +138,34 @@ public class BillService {
         return ResponseMapper.toBillResponse(bill);
     }
 
-    public List<BillResponse> getAllBills() {
-        return billRepository.findAll().stream()
-                .map(ResponseMapper::toBillResponse)
-                .toList();
+    public PageResponse<BillResponse> getAllBills(Pageable pageable) {
+        Pageable safePageable = sanitizePageable(pageable);
+        Page<BillResponse> page = billRepository.findAll(safePageable)
+                .map(ResponseMapper::toBillResponse);
+        log.info("Listed bills page={} size={} totalElements={}", page.getNumber(), page.getSize(), page.getTotalElements());
+        return PageResponse.from(page);
     }
 
-    public List<BillResponse> getBillsByCustomer(Long customerId, String email, boolean customerAccess) {
+    public PageResponse<BillResponse> getBillsByCustomer(Long customerId, String email, boolean customerAccess, Pageable pageable) {
+        Pageable safePageable = sanitizePageable(pageable);
         if (customerAccess) {
             currentUserService.validateCustomerOwnership(customerId, email);
-            return billRepository.findByCustomerOwnerUserEmail(email).stream()
-                    .map(ResponseMapper::toBillResponse)
-                    .toList();
+            Page<BillResponse> page = billRepository.findByCustomerOwnerUserEmail(email, safePageable)
+                    .map(ResponseMapper::toBillResponse);
+            log.info("Listed bills for customer email={} page={} size={} totalElements={}",
+                    email, page.getNumber(), page.getSize(), page.getTotalElements());
+            return PageResponse.from(page);
         }
-        return billRepository.findByCustomerId(customerId).stream()
-                .map(ResponseMapper::toBillResponse)
-                .toList();
+        Page<BillResponse> page = billRepository.findByCustomerId(customerId, safePageable)
+                .map(ResponseMapper::toBillResponse);
+        log.info("Listed bills for customerId={} page={} size={} totalElements={}",
+                customerId, page.getNumber(), page.getSize(), page.getTotalElements());
+        return PageResponse.from(page);
+    }
+
+    private Pageable sanitizePageable(Pageable pageable) {
+        return PageableUtils.withDefaultSort(
+                PageableUtils.validateSort(pageable, ALLOWED_BILL_SORT_FIELDS, "id"), "id");
     }
 
     public BillResponse getBill(Long billId, String email, boolean customerAccess) {

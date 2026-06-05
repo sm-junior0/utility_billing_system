@@ -5,11 +5,15 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.smj.utilitybilling.dto.request.BillGenerationRequest;
 import org.smj.utilitybilling.dto.response.BillResponse;
+import org.smj.utilitybilling.dto.response.PageResponse;
 import org.smj.utilitybilling.service.BillService;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -57,20 +61,24 @@ public class BillController {
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE')")
     @Operation(
             tags = "07 - Billing Operations",
-            summary = "List all bills for finance review",
-            description = "Protected endpoint. ROLE_ADMIN and ROLE_FINANCE can review all bills, statuses, due dates, approved fields, paid amounts, and outstanding balances.")
-    public List<BillResponse> getAllBills() {
-        return billService.getAllBills();
+            summary = "List all bills for finance review (paginated)",
+            description = "Protected endpoint. ROLE_ADMIN and ROLE_FINANCE can review all bills, statuses, due dates, approved fields, paid amounts, and outstanding balances. Query params: page (0-based), size (default 10), sort (allowed: id, billReference, billingYear, billingMonth, dueDate, totalAmount, status, createdAt — e.g. sort=dueDate,desc).")
+    public PageResponse<BillResponse> getAllBills(
+            @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+        return billService.getAllBills(pageable);
     }
 
     @GetMapping("/customer/{customerId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'CUSTOMER')")
     @Operation(
             tags = "09 - Customer Self-Service",
-            summary = "View bills for a customer",
-            description = "Protected endpoint. Staff can view bills for any customer. ROLE_CUSTOMER can only view bills belonging to their linked customer profile.")
-    public List<BillResponse> getBillsByCustomer(@Parameter(description = "Customer ID whose bills should be listed", required = true, example = "1") @PathVariable Long customerId, Authentication authentication) {
-        return billService.getBillsByCustomer(customerId, authentication.getName(), isCustomer(authentication));
+            summary = "View bills for a customer (paginated)",
+            description = "Protected endpoint. Staff can view bills for any customer. ROLE_CUSTOMER can only view bills belonging to their linked customer profile. Supports page, size, and sort query params.")
+    public PageResponse<BillResponse> getBillsByCustomer(
+            @Parameter(description = "Customer ID whose bills should be listed", required = true, example = "1") @PathVariable Long customerId,
+            Authentication authentication,
+            @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+        return billService.getBillsByCustomer(customerId, authentication.getName(), isCustomer(authentication), pageable);
     }
 
     @PostMapping("/apply-late-penalties")

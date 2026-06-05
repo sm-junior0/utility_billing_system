@@ -5,12 +5,16 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.smj.utilitybilling.dto.request.CustomerRequest;
 import org.smj.utilitybilling.dto.request.UserStatusUpdateRequest;
 import org.smj.utilitybilling.dto.response.CustomerResponse;
+import org.smj.utilitybilling.dto.response.PageResponse;
 import org.smj.utilitybilling.service.CustomerService;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -49,10 +53,11 @@ public class CustomerController {
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'OPERATOR')")
     @Operation(
             tags = "03 - Customer Setup",
-            summary = "List customers for staff users",
-            description = "Protected endpoint. ROLE_ADMIN, ROLE_FINANCE, and ROLE_OPERATOR can list customers to support setup, reading capture, billing, and payment review.")
-    public List<CustomerResponse> getAllCustomers() {
-        return customerService.getAllCustomers();
+            summary = "List customers for staff users (paginated)",
+            description = "Protected endpoint. ROLE_ADMIN, ROLE_FINANCE, and ROLE_OPERATOR can list customers to support setup, reading capture, billing, and payment review. Query params: page (0-based), size (default 10), sort (allowed: id, fullNames, email, nationalId, status, createdAt — e.g. sort=fullNames,asc).")
+    public PageResponse<CustomerResponse> getAllCustomers(
+            @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+        return customerService.getAllCustomers(pageable);
     }
 
     @GetMapping("/{id}")

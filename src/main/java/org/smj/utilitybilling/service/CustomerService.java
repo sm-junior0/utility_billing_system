@@ -1,9 +1,11 @@
 package org.smj.utilitybilling.service;
 
-import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.smj.utilitybilling.dto.request.CustomerRequest;
 import org.smj.utilitybilling.dto.response.CustomerResponse;
+import org.smj.utilitybilling.dto.response.PageResponse;
 import org.smj.utilitybilling.entity.Customer;
 import org.smj.utilitybilling.entity.UserAccount;
 import org.smj.utilitybilling.enums.Role;
@@ -12,17 +14,24 @@ import org.smj.utilitybilling.exception.BadRequestException;
 import org.smj.utilitybilling.exception.ResourceNotFoundException;
 import org.smj.utilitybilling.repository.CustomerRepository;
 import org.smj.utilitybilling.repository.UserAccountRepository;
+import org.smj.utilitybilling.util.PageableUtils;
 import org.smj.utilitybilling.util.ResponseMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 /**
  * Service layer implementing Customer business rules.
  */
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CustomerService {
+
+    private static final Set<String> ALLOWED_CUSTOMER_SORT_FIELDS = Set.of(
+            "id", "fullNames", "nationalId", "email", "phoneNumber", "address", "status", "createdAt", "updatedAt");
 
     private final CustomerRepository customerRepository;
     private final UserAccountRepository userAccountRepository;
@@ -34,10 +43,17 @@ public class CustomerService {
         return ResponseMapper.toCustomerResponse(customerRepository.save(customer));
     }
 
-    public List<CustomerResponse> getAllCustomers() {
-        return customerRepository.findAll().stream()
-                .map(ResponseMapper::toCustomerResponse)
-                .toList();
+    public PageResponse<CustomerResponse> getAllCustomers(Pageable pageable) {
+        Pageable safePageable = sanitizePageable(pageable);
+        Page<CustomerResponse> page = customerRepository.findAll(safePageable)
+                .map(ResponseMapper::toCustomerResponse);
+        log.info("Listed customers page={} size={} totalElements={}", page.getNumber(), page.getSize(), page.getTotalElements());
+        return PageResponse.from(page);
+    }
+
+    private Pageable sanitizePageable(Pageable pageable) {
+        return PageableUtils.withDefaultSort(
+                PageableUtils.validateSort(pageable, ALLOWED_CUSTOMER_SORT_FIELDS, "id"), "id");
     }
 
     public CustomerResponse getCustomer(Long id, String email, boolean customerAccess) {

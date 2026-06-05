@@ -5,6 +5,8 @@ import java.util.Optional;
 import org.smj.utilitybilling.entity.Notification;
 import org.smj.utilitybilling.enums.NotificationStatus;
 import org.smj.utilitybilling.enums.NotificationType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -13,9 +15,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    List<Notification> findByCustomerId(Long customerId);
+    Page<Notification> findByCustomerId(Long customerId, Pageable pageable);
 
-    List<Notification> findByCustomerOwnerUserEmail(String email);
+    Page<Notification> findByCustomerOwnerUserEmail(String email, Pageable pageable);
 
     Optional<Notification> findTopByBillIdAndTypeOrderByCreatedAtDesc(Long billId, NotificationType type);
 

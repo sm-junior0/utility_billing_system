@@ -5,12 +5,16 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.smj.utilitybilling.dto.request.MeterRequest;
 import org.smj.utilitybilling.dto.request.MeterStatusUpdateRequest;
 import org.smj.utilitybilling.dto.response.MeterResponse;
+import org.smj.utilitybilling.dto.response.PageResponse;
 import org.smj.utilitybilling.service.MeterService;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -49,20 +53,24 @@ public class MeterController {
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'OPERATOR')")
     @Operation(
             tags = "04 - Meter Setup",
-            summary = "List meters for staff users",
-            description = "Protected endpoint. ROLE_ADMIN, ROLE_FINANCE, and ROLE_OPERATOR can list all meters for setup, reading, and billing workflows.")
-    public List<MeterResponse> getAllMeters() {
-        return meterService.getAllMeters();
+            summary = "List meters for staff users (paginated)",
+            description = "Protected endpoint. ROLE_ADMIN, ROLE_FINANCE, and ROLE_OPERATOR can list all meters for setup, reading, and billing workflows. Query params: page (0-based), size (default 10), sort (allowed: id, meterNumber, meterType, installationDate, status, createdAt — e.g. sort=meterNumber,asc).")
+    public PageResponse<MeterResponse> getAllMeters(
+            @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+        return meterService.getAllMeters(pageable);
     }
 
     @GetMapping("/customer/{customerId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'OPERATOR', 'CUSTOMER')")
     @Operation(
             tags = "09 - Customer Self-Service",
-            summary = "View meters owned by a customer",
-            description = "Protected endpoint. Staff can view meters for any customer. ROLE_CUSTOMER can only view meters belonging to their linked customer profile.")
-    public List<MeterResponse> getMetersByCustomer(@Parameter(description = "Customer ID whose meters should be listed", required = true, example = "1") @PathVariable Long customerId, Authentication authentication) {
-        return meterService.getMetersByCustomer(customerId, authentication.getName(), isCustomer(authentication));
+            summary = "View meters owned by a customer (paginated)",
+            description = "Protected endpoint. Staff can view meters for any customer. ROLE_CUSTOMER can only view meters belonging to their linked customer profile. Supports page, size, and sort query params.")
+    public PageResponse<MeterResponse> getMetersByCustomer(
+            @Parameter(description = "Customer ID whose meters should be listed", required = true, example = "1") @PathVariable Long customerId,
+            Authentication authentication,
+            @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+        return meterService.getMetersByCustomer(customerId, authentication.getName(), isCustomer(authentication), pageable);
     }
 
     @PutMapping("/{id}/status")

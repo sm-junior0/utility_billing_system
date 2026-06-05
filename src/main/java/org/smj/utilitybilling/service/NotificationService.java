@@ -2,17 +2,22 @@ package org.smj.utilitybilling.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.smj.utilitybilling.dto.response.NotificationResponse;
+import org.smj.utilitybilling.dto.response.PageResponse;
 import org.smj.utilitybilling.entity.Bill;
 import org.smj.utilitybilling.entity.Notification;
 import org.smj.utilitybilling.enums.NotificationStatus;
 import org.smj.utilitybilling.enums.NotificationType;
 import org.smj.utilitybilling.exception.ResourceNotFoundException;
 import org.smj.utilitybilling.repository.NotificationRepository;
+import org.smj.utilitybilling.util.PageableUtils;
 import org.smj.utilitybilling.util.ResponseMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -28,6 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class NotificationService {
 
+    private static final Set<String> ALLOWED_NOTIFICATION_SORT_FIELDS = Set.of(
+            "id", "type", "status", "sentAt", "createdAt", "updatedAt");
+
     private final NotificationRepository notificationRepository;
     private final JavaMailSender mailSender;
     private final CurrentUserService currentUserService;
@@ -35,22 +43,34 @@ public class NotificationService {
     @Value("${spring.mail.username:}")
     private String mailUsername;
 
-    public List<NotificationResponse> getAllNotifications() {
-        return notificationRepository.findAll().stream()
-                .map(ResponseMapper::toNotificationResponse)
-                .toList();
+    public PageResponse<NotificationResponse> getAllNotifications(Pageable pageable) {
+        Pageable safePageable = sanitizePageable(pageable);
+        Page<NotificationResponse> page = notificationRepository.findAll(safePageable)
+                .map(ResponseMapper::toNotificationResponse);
+        log.info("Listed notifications page={} size={} totalElements={}", page.getNumber(), page.getSize(), page.getTotalElements());
+        return PageResponse.from(page);
     }
 
-    public List<NotificationResponse> getNotificationsByCustomer(Long customerId, String email, boolean customerAccess) {
+    public PageResponse<NotificationResponse> getNotificationsByCustomer(Long customerId, String email, boolean customerAccess, Pageable pageable) {
+        Pageable safePageable = sanitizePageable(pageable);
         if (customerAccess) {
             currentUserService.validateCustomerOwnership(customerId, email);
-            return notificationRepository.findByCustomerOwnerUserEmail(email).stream()
-                    .map(ResponseMapper::toNotificationResponse)
-                    .toList();
+            Page<NotificationResponse> page = notificationRepository.findByCustomerOwnerUserEmail(email, safePageable)
+                    .map(ResponseMapper::toNotificationResponse);
+            log.info("Listed notifications for customer email={} page={} size={} totalElements={}",
+                    email, page.getNumber(), page.getSize(), page.getTotalElements());
+            return PageResponse.from(page);
         }
-        return notificationRepository.findByCustomerId(customerId).stream()
-                .map(ResponseMapper::toNotificationResponse)
-                .toList();
+        Page<NotificationResponse> page = notificationRepository.findByCustomerId(customerId, safePageable)
+                .map(ResponseMapper::toNotificationResponse);
+        log.info("Listed notifications for customerId={} page={} size={} totalElements={}",
+                customerId, page.getNumber(), page.getSize(), page.getTotalElements());
+        return PageResponse.from(page);
+    }
+
+    private Pageable sanitizePageable(Pageable pageable) {
+        return PageableUtils.withDefaultSort(
+                PageableUtils.validateSort(pageable, ALLOWED_NOTIFICATION_SORT_FIELDS, "id"), "id");
     }
 
     @Transactional
