@@ -1,9 +1,10 @@
 package org.smj.utilitybilling.repository;
 
-import java.util.List;
 import java.util.Optional;
 import org.smj.utilitybilling.entity.Meter;
 import org.smj.utilitybilling.entity.MeterReading;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 /**
  * Spring Data repository for MeterReading persistence.
@@ -15,5 +16,5 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, Long
 
     Optional<MeterReading> findTopByMeterOrderByReadingDateDescIdDesc(Meter meter);
 
-    List<MeterReading> findByMeterId(Long meterId);
+    Page<MeterReading> findByMeterId(Long meterId, Pageable pageable);
 }

@@ -5,11 +5,15 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.smj.utilitybilling.dto.request.MeterReadingRequest;
 import org.smj.utilitybilling.dto.response.MeterReadingResponse;
+import org.smj.utilitybilling.dto.response.PageResponse;
 import org.smj.utilitybilling.service.MeterReadingService;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -50,19 +54,22 @@ public class MeterReadingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'OPERATOR')")
     @Operation(
             tags = "06 - Meter Reading Operations",
-            summary = "List captured readings",
-            description = "Protected endpoint. ROLE_ADMIN, ROLE_FINANCE, and ROLE_OPERATOR can review all captured readings before bill generation.")
-    public List<MeterReadingResponse> getAllReadings() {
-        return meterReadingService.getAllReadings();
+            summary = "List captured readings (paginated)",
+            description = "Protected endpoint. ROLE_ADMIN, ROLE_FINANCE, and ROLE_OPERATOR can review all captured readings before bill generation. Query params: page (0-based), size (default 10), sort (allowed: id, readingDate, readingMonth, readingYear, consumption, createdAt — e.g. sort=readingDate,desc).")
+    public PageResponse<MeterReadingResponse> getAllReadings(
+            @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+        return meterReadingService.getAllReadings(pageable);
     }
 
     @GetMapping("/meter/{meterId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'OPERATOR')")
     @Operation(
             tags = "06 - Meter Reading Operations",
-            summary = "Get readings for one meter",
-            description = "Protected endpoint. ROLE_ADMIN, ROLE_FINANCE, and ROLE_OPERATOR can retrieve readings for a specific meter to confirm monthly consumption.")
-    public List<MeterReadingResponse> getReadingsByMeter(@Parameter(description = "Meter ID whose readings should be listed", required = true, example = "1") @PathVariable Long meterId) {
-        return meterReadingService.getReadingsByMeter(meterId);
+            summary = "Get readings for one meter (paginated)",
+            description = "Protected endpoint. ROLE_ADMIN, ROLE_FINANCE, and ROLE_OPERATOR can retrieve readings for a specific meter to confirm monthly consumption. Supports page, size, and sort query params.")
+    public PageResponse<MeterReadingResponse> getReadingsByMeter(
+            @Parameter(description = "Meter ID whose readings should be listed", required = true, example = "1") @PathVariable Long meterId,
+            @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+        return meterReadingService.getReadingsByMeter(meterId, pageable);
     }
 }

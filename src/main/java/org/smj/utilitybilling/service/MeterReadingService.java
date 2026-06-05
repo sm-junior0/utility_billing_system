@@ -1,10 +1,12 @@
 package org.smj.utilitybilling.service;
 
 import java.math.BigDecimal;
-import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.smj.utilitybilling.dto.request.MeterReadingRequest;
 import org.smj.utilitybilling.dto.response.MeterReadingResponse;
+import org.smj.utilitybilling.dto.response.PageResponse;
 import org.smj.utilitybilling.entity.Meter;
 import org.smj.utilitybilling.entity.MeterReading;
 import org.smj.utilitybilling.entity.UserAccount;
@@ -12,17 +14,25 @@ import org.smj.utilitybilling.enums.MeterStatus;
 import org.smj.utilitybilling.exception.BadRequestException;
 import org.smj.utilitybilling.exception.ResourceNotFoundException;
 import org.smj.utilitybilling.repository.MeterReadingRepository;
+import org.smj.utilitybilling.util.PageableUtils;
 import org.smj.utilitybilling.util.ResponseMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 /**
  * Service layer implementing MeterReading business rules.
  */
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MeterReadingService {
+
+    private static final Set<String> ALLOWED_READING_SORT_FIELDS = Set.of(
+            "id", "previousReading", "currentReading", "consumption",
+            "readingDate", "readingMonth", "readingYear", "createdAt", "updatedAt");
 
     private final MeterReadingRepository meterReadingRepository;
     private final MeterService meterService;
@@ -65,17 +75,27 @@ public class MeterReadingService {
         return ResponseMapper.toMeterReadingResponse(meterReadingRepository.save(reading));
     }
 
-    public List<MeterReadingResponse> getAllReadings() {
-        return meterReadingRepository.findAll().stream()
-                .map(ResponseMapper::toMeterReadingResponse)
-                .toList();
+    public PageResponse<MeterReadingResponse> getAllReadings(Pageable pageable) {
+        Pageable safePageable = sanitizePageable(pageable);
+        Page<MeterReadingResponse> page = meterReadingRepository.findAll(safePageable)
+                .map(ResponseMapper::toMeterReadingResponse);
+        log.info("Listed readings page={} size={} totalElements={}", page.getNumber(), page.getSize(), page.getTotalElements());
+        return PageResponse.from(page);
     }
 
-    public List<MeterReadingResponse> getReadingsByMeter(Long meterId) {
+    public PageResponse<MeterReadingResponse> getReadingsByMeter(Long meterId, Pageable pageable) {
         meterService.getMeterEntity(meterId);
-        return meterReadingRepository.findByMeterId(meterId).stream()
-                .map(ResponseMapper::toMeterReadingResponse)
-                .toList();
+        Pageable safePageable = sanitizePageable(pageable);
+        Page<MeterReadingResponse> page = meterReadingRepository.findByMeterId(meterId, safePageable)
+                .map(ResponseMapper::toMeterReadingResponse);
+        log.info("Listed readings for meterId={} page={} size={} totalElements={}",
+                meterId, page.getNumber(), page.getSize(), page.getTotalElements());
+        return PageResponse.from(page);
+    }
+
+    private Pageable sanitizePageable(Pageable pageable) {
+        return PageableUtils.withDefaultSort(
+                PageableUtils.validateSort(pageable, ALLOWED_READING_SORT_FIELDS, "id"), "id");
     }
 
     public MeterReading getReadingEntity(Long id) {
