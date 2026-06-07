@@ -76,15 +76,12 @@ public class PrepaidTransactionService {
     }
 
     private BigDecimal calculateLegacyUnits(BigDecimal amount, LocalDate date) {
-        try {
-            Tariff tariff = tariffService.getApplicableTariff(MeterType.ELECTRICITY, date);
-            if (tariff.getTariffType() == TariffType.FLAT && tariff.getFlatUnitPrice() != null
-                    && tariff.getFlatUnitPrice().compareTo(BigDecimal.ZERO) > 0) {
-                return amount.divide(tariff.getFlatUnitPrice(), 2, RoundingMode.HALF_UP);
-            }
-        } catch (Exception ignored) {
-        }
-        return amount.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        return tariffService.findApplicableTariff(MeterType.ELECTRICITY, date)
+                .filter(tariff -> tariff.getTariffType() == TariffType.FLAT)
+                .map(Tariff::getFlatUnitPrice)
+                .filter(price -> price.compareTo(BigDecimal.ZERO) > 0)
+                .map(price -> amount.divide(price, 2, RoundingMode.HALF_UP))
+                .orElseGet(() -> amount.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
     }
 
     private String generateToken() {

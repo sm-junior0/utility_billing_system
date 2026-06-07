@@ -44,6 +44,9 @@ public class MeterReadingService {
         if (meter.getStatus() != MeterStatus.ACTIVE) {
             throw new BadRequestException("Only active meters can receive readings");
         }
+        if (request.getReadingDate().isBefore(meter.getInstallationDate())) {
+            throw new BadRequestException("Reading date cannot be before the meter installation date");
+        }
         if (request.getCurrentReading().compareTo(request.getPreviousReading()) <= 0) {
             throw new BadRequestException("Current reading must be greater than previous reading");
         }

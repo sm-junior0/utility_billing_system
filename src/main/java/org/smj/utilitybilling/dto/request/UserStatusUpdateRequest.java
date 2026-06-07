@@ -14,6 +14,6 @@ import org.smj.utilitybilling.enums.UserStatus;
 public class UserStatusUpdateRequest {
 
     @NotNull(message = "Status is required")
-    @Schema(example = "ACTIVE", description = "Allowed values: ACTIVE, PENDING_VERIFICATION, INACTIVE.")
+    @Schema(example = "ACTIVE", description = "Allowed values: ACTIVE, PENDING_APPROVAL, PENDING_VERIFICATION, INACTIVE.")
     private UserStatus status;
 }

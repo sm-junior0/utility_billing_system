@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.smj.utilitybilling.entity.OtpVerification;
+import org.smj.utilitybilling.enums.OtpPurpose;
 import org.smj.utilitybilling.exception.BadRequestException;
 import org.smj.utilitybilling.repository.OtpVerificationRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,29 +32,30 @@ public class OtpVerificationService {
     private String mailUsername;
 
     @Transactional
-    public void createAndSendOtp(String email) {
-        expireOldOtps(email);
+    public void createAndSendOtp(String email, OtpPurpose purpose) {
+        expireOldOtps(email, purpose);
 
         String otpCode = String.format("%06d", ThreadLocalRandom.current().nextInt(0, 1_000_000));
         OtpVerification otpVerification = OtpVerification.builder()
                 .email(email)
                 .otpCode(otpCode)
+                .purpose(purpose)
                 .expiresAt(LocalDateTime.now().plusMinutes(otpExpirationMinutes))
                 .used(false)
                 .build();
         otpVerificationRepository.save(otpVerification);
-        sendOtpEmail(email, otpCode);
+        sendOtpEmail(email, otpCode, purpose);
     }
 
     @Transactional
-    public void expireOldOtps(String email) {
-        List<OtpVerification> activeOtps = otpVerificationRepository.findByEmailAndUsedFalse(email);
+    public void expireOldOtps(String email, OtpPurpose purpose) {
+        List<OtpVerification> activeOtps = otpVerificationRepository.findByEmailAndPurposeAndUsedFalse(email, purpose);
         activeOtps.forEach(otp -> otp.setUsed(true));
     }
 
     @Transactional
-    public void verifyOtp(String email, String otpCode) {
-        OtpVerification otpVerification = otpVerificationRepository.findTopByEmailOrderByCreatedAtDesc(email)
+    public void verifyOtp(String email, String otpCode, OtpPurpose purpose) {
+        OtpVerification otpVerification = otpVerificationRepository.findTopByEmailAndPurposeOrderByCreatedAtDesc(email, purpose)
                 .orElseThrow(() -> new BadRequestException("No OTP was found for this email. Please request a new OTP."));
 
         if (otpVerification.isUsed()) {
@@ -69,18 +71,32 @@ public class OtpVerificationService {
         otpVerification.setUsed(true);
     }
 
-    private void sendOtpEmail(String email, String otpCode) {
+    private void sendOtpEmail(String email, String otpCode, OtpPurpose purpose) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             if (mailUsername != null && !mailUsername.isBlank()) {
                 message.setFrom(mailUsername);
             }
             message.setTo(email);
-            message.setSubject("Utility Billing Registration OTP");
-            message.setText("Your registration OTP is: " + otpCode + ". It expires in " + otpExpirationMinutes + " minutes.");
+            message.setSubject(resolveEmailSubject(purpose));
+            message.setText(resolveEmailBody(otpCode, purpose));
             mailSender.send(message);
         } catch (Exception ex) {
             throw new BadRequestException("Failed to send OTP email. Please check Gmail app password, internet access, and SMTP settings. Reason: " + ex.getMessage());
         }
+    }
+
+    private String resolveEmailSubject(OtpPurpose purpose) {
+        return switch (purpose) {
+            case REGISTRATION -> "Utility Billing Registration OTP";
+            case PASSWORD_RESET -> "Utility Billing Password Reset OTP";
+        };
+    }
+
+    private String resolveEmailBody(String otpCode, OtpPurpose purpose) {
+        String action = purpose == OtpPurpose.REGISTRATION
+                ? "registration"
+                : "password reset";
+        return "Your " + action + " OTP is: " + otpCode + ". It expires in " + otpExpirationMinutes + " minutes.";
     }
 }

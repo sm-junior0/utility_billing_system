@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.smj.utilitybilling.dto.request.CustomerProfileRequest;
 import lombok.RequiredArgsConstructor;
 import org.smj.utilitybilling.dto.request.CustomerRequest;
 import org.smj.utilitybilling.dto.request.UserStatusUpdateRequest;
@@ -49,6 +50,19 @@ public class CustomerController {
         return ResponseEntity.status(HttpStatus.CREATED).body(customerService.createCustomer(request));
     }
 
+    @PostMapping("/profile-request")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(
+            tags = "09 - Customer Self-Service",
+            summary = "Step 4: Submit customer profile for approval",
+            description = "Protected endpoint. ROLE_CUSTOMER submits the utility billing profile after OTP verification. The request is linked to the logged-in user and stored with PENDING_APPROVAL status until an admin approves it.")
+    public ResponseEntity<CustomerResponse> submitCustomerProfile(
+            @Valid @RequestBody CustomerProfileRequest request,
+            Authentication authentication) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(customerService.submitCustomerProfile(request, authentication.getName()));
+    }
+
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'FINANCE', 'OPERATOR')")
     @Operation(
@@ -85,9 +99,24 @@ public class CustomerController {
     @Operation(
             tags = "03 - Customer Setup",
             summary = "Admin changes customer status",
-            description = "Protected endpoint. ROLE_ADMIN activates or deactivates a customer. Inactive customers cannot receive generated bills.")
-    public CustomerResponse updateStatus(@Parameter(description = "Customer ID whose status should be changed", required = true, example = "1") @PathVariable Long id, @Valid @RequestBody UserStatusUpdateRequest request) {
-        return customerService.updateStatus(id, request.getStatus());
+            description = "Protected endpoint. ROLE_ADMIN changes customer status. If a profile is moved from PENDING_APPROVAL to ACTIVE, the system records approval metadata and sends the activation notification automatically.")
+    public CustomerResponse updateStatus(
+            @Parameter(description = "Customer ID whose status should be changed", required = true, example = "1") @PathVariable Long id,
+            @Valid @RequestBody UserStatusUpdateRequest request,
+            Authentication authentication) {
+        return customerService.updateStatus(id, request.getStatus(), authentication.getName());
+    }
+
+    @PutMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            tags = "03 - Customer Setup",
+            summary = "Step 5: Approve a pending customer profile",
+            description = "Protected endpoint. ROLE_ADMIN approves a PENDING_APPROVAL customer profile, records approvedBy and approvedAt, sets the customer to ACTIVE, creates a notification, and sends the activation email.")
+    public CustomerResponse approveCustomer(
+            @Parameter(description = "Customer ID to approve", required = true, example = "1") @PathVariable Long id,
+            Authentication authentication) {
+        return customerService.approveCustomer(id, authentication.getName());
     }
 
     private boolean isCustomer(Authentication authentication) {

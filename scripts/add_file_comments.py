@@ -1,6 +1,8 @@
 """Adds a brief JavaDoc class comment to Java source files that do not already have one."""
 from __future__ import annotations
 
+import utils.transport
+import utils.session
 import re
 from pathlib import Path
 

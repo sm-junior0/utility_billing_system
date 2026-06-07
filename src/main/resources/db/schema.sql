@@ -17,6 +17,7 @@ CREATE TABLE otp_verifications (
     id BIGSERIAL PRIMARY KEY,
     email VARCHAR(120) NOT NULL,
     otp_code VARCHAR(6) NOT NULL,
+    purpose VARCHAR(30) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     used BOOLEAN NOT NULL,
     created_at TIMESTAMP NOT NULL
@@ -31,6 +32,8 @@ CREATE TABLE customers (
     address VARCHAR(255) NOT NULL,
     status VARCHAR(20) NOT NULL,
     owner_user_id BIGINT UNIQUE REFERENCES user_accounts(id),
+    approved_by BIGINT REFERENCES user_accounts(id),
+    approved_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );

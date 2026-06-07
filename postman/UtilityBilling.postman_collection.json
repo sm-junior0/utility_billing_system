@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "2e0b3ea6-69da-4b0f-b780-utility-billing",
     "name": "Utility Billing System API",
-    "description": "Postman collection for OTP registration, JWT authentication, user management, billing, payments, configuration, and notifications.",
+    "description": "Postman collection for the full Utility Billing System workflow: OTP signup, JWT auth, customer approval, billing, payments, notifications, and legacy prepaid support.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -12,19 +12,29 @@
     { "key": "financeToken", "value": "" },
     { "key": "operatorToken", "value": "" },
     { "key": "signupEmail", "value": "customer1@utility.rw" },
+    { "key": "signupPhone", "value": "250788999111" },
+    { "key": "signupPassword", "value": "Test@1234" },
     { "key": "otpCode", "value": "" },
+    { "key": "passwordResetOtp", "value": "" },
     { "key": "userId", "value": "2" },
     { "key": "customerId", "value": "1" },
+    { "key": "customerApprovalNotificationId", "value": "1" },
     { "key": "meterId", "value": "1" },
+    { "key": "electricityMeterId", "value": "2" },
     { "key": "readingId", "value": "1" },
-    { "key": "billId", "value": "1" }
+    { "key": "billId", "value": "1" },
+    { "key": "billReference", "value": "BILL-202606-0001" },
+    { "key": "taxId", "value": "1" },
+    { "key": "penaltyId", "value": "1" },
+    { "key": "serviceChargeId", "value": "1" },
+    { "key": "tariffId", "value": "1" }
   ],
   "item": [
     {
-      "name": "Authentication",
+      "name": "01 - Authentication",
       "item": [
         {
-          "name": "Signup",
+          "name": "Signup Customer User",
           "request": {
             "method": "POST",
             "header": [
@@ -32,7 +42,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullNames\": \"Customer User\",\n  \"email\": \"{{signupEmail}}\",\n  \"phoneNumber\": \"250788999111\",\n  \"password\": \"Admin@123\"\n}"
+              "raw": "{\n  \"fullNames\": \"Customer User\",\n  \"email\": \"{{signupEmail}}\",\n  \"phoneNumber\": \"{{signupPhone}}\",\n  \"password\": \"{{signupPassword}}\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/signup"
           }
@@ -66,6 +76,34 @@
           }
         },
         {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{signupEmail}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/forgot-password"
+          }
+        },
+        {
+          "name": "Reset Password With OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{signupEmail}}\",\n  \"otpCode\": \"{{passwordResetOtp}}\",\n  \"newPassword\": \"Reset@1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/reset-password"
+          }
+        },
+        {
           "name": "Login Admin",
           "request": {
             "method": "POST",
@@ -80,7 +118,7 @@
           }
         },
         {
-          "name": "Login Registered User",
+          "name": "Login Registered Customer",
           "request": {
             "method": "POST",
             "header": [
@@ -88,15 +126,25 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{signupEmail}}\",\n  \"password\": \"Admin@123\"\n}"
+              "raw": "{\n  \"email\": \"{{signupEmail}}\",\n  \"password\": \"{{signupPassword}}\"\n}"
             },
             "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "Logout Current User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/auth/logout"
           }
         }
       ]
     },
     {
-      "name": "Admin - User Management",
+      "name": "02 - Admin User Management",
       "item": [
         {
           "name": "List Users",
@@ -134,7 +182,7 @@
           }
         },
         {
-          "name": "Change User Role",
+          "name": "Change User Role To Operator",
           "request": {
             "method": "PUT",
             "header": [
@@ -147,14 +195,44 @@
             },
             "url": "{{baseUrl}}/api/users/{{userId}}/role"
           }
+        },
+        {
+          "name": "Change User Role To Finance",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ROLE_FINANCE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}/role"
+          }
         }
       ]
     },
     {
-      "name": "Customer Management",
+      "name": "03 - Customer Setup And Approval",
       "item": [
         {
-          "name": "Create Customer",
+          "name": "Submit Customer Profile Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nationalId\": \"1199912345678901\",\n  \"address\": \"Kigali, Gasabo\"\n}"
+            },
+            "url": "{{baseUrl}}/api/customers/profile-request"
+          }
+        },
+        {
+          "name": "Create Customer Directly As Admin",
           "request": {
             "method": "POST",
             "header": [
@@ -163,7 +241,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"fullNames\": \"Alice Uwase\",\n  \"nationalId\": \"1199912345678901\",\n  \"email\": \"alice@client.rw\",\n  \"phoneNumber\": \"250788123456\",\n  \"address\": \"Kigali, Gasabo\",\n  \"status\": \"ACTIVE\",\n  \"ownerUserId\": {{userId}}\n}"
+              "raw": "{\n  \"fullNames\": \"Alice Uwase\",\n  \"nationalId\": \"1199912345678902\",\n  \"email\": \"alice.admin@client.rw\",\n  \"phoneNumber\": \"250788123456\",\n  \"address\": \"Kigali, Gasabo\",\n  \"status\": \"ACTIVE\",\n  \"ownerUserId\": {{userId}}\n}"
             },
             "url": "{{baseUrl}}/api/customers"
           }
@@ -187,11 +265,51 @@
             ],
             "url": "{{baseUrl}}/api/customers/{{customerId}}"
           }
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullNames\": \"Customer User\",\n  \"nationalId\": \"1199912345678901\",\n  \"email\": \"{{signupEmail}}\",\n  \"phoneNumber\": \"{{signupPhone}}\",\n  \"address\": \"Kigali, Kicukiro\",\n  \"status\": \"PENDING_APPROVAL\",\n  \"ownerUserId\": {{userId}}\n}"
+            },
+            "url": "{{baseUrl}}/api/customers/{{customerId}}"
+          }
+        },
+        {
+          "name": "Approve Customer Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/customers/{{customerId}}/approve"
+          }
+        },
+        {
+          "name": "Update Customer Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"INACTIVE\"\n}"
+            },
+            "url": "{{baseUrl}}/api/customers/{{customerId}}/status"
+          }
         }
       ]
     },
     {
-      "name": "Meter Management",
+      "name": "04 - Meter Setup",
       "item": [
         {
           "name": "Create Water Meter",
@@ -209,6 +327,21 @@
           }
         },
         {
+          "name": "Create Electricity Meter",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterNumber\": \"ELC-0001\",\n  \"meterType\": \"ELECTRICITY\",\n  \"installationDate\": \"2026-01-10\",\n  \"status\": \"ACTIVE\",\n  \"customerId\": {{customerId}}\n}"
+            },
+            "url": "{{baseUrl}}/api/meters"
+          }
+        },
+        {
           "name": "List Meters",
           "request": {
             "method": "GET",
@@ -217,42 +350,72 @@
             ],
             "url": "{{baseUrl}}/api/meters"
           }
-        }
-      ]
-    },
-    {
-      "name": "Meter Reading Management",
-      "item": [
+        },
         {
-          "name": "Capture Reading",
+          "name": "List Meters By Customer",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{operatorToken}}" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/meters/customer/{{customerId}}"
+          }
+        },
+        {
+          "name": "Update Meter Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"meterId\": {{meterId}},\n  \"previousReading\": 100,\n  \"currentReading\": 135,\n  \"readingDate\": \"2026-06-01\"\n}"
+              "raw": "{\n  \"status\": \"ACTIVE\"\n}"
             },
-            "url": "{{baseUrl}}/api/readings"
+            "url": "{{baseUrl}}/api/meters/{{meterId}}/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Billing Configuration",
+      "item": [
+        {
+          "name": "Create Water Tariff",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterType\": \"WATER\",\n  \"tariffType\": \"FLAT\",\n  \"version\": 1,\n  \"effectiveFrom\": \"2026-01-01\",\n  \"flatUnitPrice\": 340\n}"
+            },
+            "url": "{{baseUrl}}/api/tariffs"
           }
         },
         {
-          "name": "List Readings",
+          "name": "List Tariffs",
           "request": {
             "method": "GET",
             "header": [
               { "key": "Authorization", "value": "Bearer {{adminToken}}" }
             ],
-            "url": "{{baseUrl}}/api/readings"
+            "url": "{{baseUrl}}/api/tariffs"
           }
-        }
-      ]
-    },
-    {
-      "name": "Configuration Management",
-      "item": [
+        },
+        {
+          "name": "Deactivate Tariff",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/tariffs/{{tariffId}}/deactivate"
+          }
+        },
         {
           "name": "Create Tax",
           "request": {
@@ -266,6 +429,31 @@
               "raw": "{\n  \"name\": \"VAT\",\n  \"percentage\": 18,\n  \"active\": true\n}"
             },
             "url": "{{baseUrl}}/api/taxes"
+          }
+        },
+        {
+          "name": "List Taxes",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/taxes"
+          }
+        },
+        {
+          "name": "Update Tax Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/taxes/{{taxId}}/status"
           }
         },
         {
@@ -284,6 +472,31 @@
           }
         },
         {
+          "name": "List Penalties",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/penalties"
+          }
+        },
+        {
+          "name": "Update Penalty Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/penalties/{{penaltyId}}/status"
+          }
+        },
+        {
           "name": "Create Service Charge",
           "request": {
             "method": "POST",
@@ -299,24 +512,89 @@
           }
         },
         {
-          "name": "Create Water Tariff",
+          "name": "List Service Charges",
           "request": {
-            "method": "POST",
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/service-charges"
+          }
+        },
+        {
+          "name": "Update Service Charge Status",
+          "request": {
+            "method": "PUT",
             "header": [
               { "key": "Authorization", "value": "Bearer {{adminToken}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"meterType\": \"WATER\",\n  \"tariffType\": \"FLAT\",\n  \"version\": 1,\n  \"effectiveFrom\": \"2026-01-01\",\n  \"flatUnitPrice\": 340\n}"
+              "raw": "{\n  \"active\": true\n}"
             },
-            "url": "{{baseUrl}}/api/tariffs"
+            "url": "{{baseUrl}}/api/service-charges/{{serviceChargeId}}/status"
           }
         }
       ]
     },
     {
-      "name": "Billing Management",
+      "name": "06 - Meter Reading Operations",
+      "item": [
+        {
+          "name": "Capture Reading",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{operatorToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterId\": {{meterId}},\n  \"previousReading\": 100,\n  \"currentReading\": 135,\n  \"readingDate\": \"2026-06-01\"\n}"
+            },
+            "url": "{{baseUrl}}/api/readings"
+          }
+        },
+        {
+          "name": "Reject Past Reading Before Installation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{operatorToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterId\": {{meterId}},\n  \"previousReading\": 100,\n  \"currentReading\": 120,\n  \"readingDate\": \"2025-01-01\"\n}"
+            },
+            "url": "{{baseUrl}}/api/readings"
+          }
+        },
+        {
+          "name": "List Readings",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/readings"
+          }
+        },
+        {
+          "name": "List Readings By Meter",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/readings/meter/{{meterId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Billing Operations",
       "item": [
         {
           "name": "Generate Bill",
@@ -344,6 +622,16 @@
           }
         },
         {
+          "name": "Apply Late Penalties",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/bills/apply-late-penalties"
+          }
+        },
+        {
           "name": "List Bills",
           "request": {
             "method": "GET",
@@ -352,14 +640,34 @@
             ],
             "url": "{{baseUrl}}/api/bills"
           }
+        },
+        {
+          "name": "Get Bill By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/bills/{{billId}}"
+          }
+        },
+        {
+          "name": "List Bills By Customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/bills/customer/{{customerId}}"
+          }
         }
       ]
     },
     {
-      "name": "Payment Management",
+      "name": "08 - Payment Operations",
       "item": [
         {
-          "name": "Record Payment",
+          "name": "Record Payment By Bill ID",
           "request": {
             "method": "POST",
             "header": [
@@ -374,22 +682,7 @@
           }
         },
         {
-          "name": "Get Payments By Bill",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{financeToken}}" }
-            ],
-            "url": "{{baseUrl}}/api/payments/bill/{{billId}}"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Legacy Prepaid Management",
-      "item": [
-        {
-          "name": "Electricity Prepaid Top-Up",
+          "name": "Record Payment By Bill Reference",
           "request": {
             "method": "POST",
             "header": [
@@ -398,15 +691,60 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"meterId\": 2,\n  \"amount\": 2000,\n  \"paymentMethod\": \"MOBILE_MONEY\",\n  \"transactionDate\": \"2026-06-05\"\n}"
+              "raw": "{\n  \"billReference\": \"{{billReference}}\",\n  \"amountPaid\": 5000,\n  \"paymentMethod\": \"BANK_TRANSFER\",\n  \"paymentDate\": \"2026-06-05\"\n}"
             },
-            "url": "{{baseUrl}}/api/prepaid/topup"
+            "url": "{{baseUrl}}/api/payments"
+          }
+        },
+        {
+          "name": "Get Payments By Bill",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/payments/bill/{{billId}}"
+          }
+        },
+        {
+          "name": "Get Payments By Customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/payments/customer/{{customerId}}"
           }
         }
       ]
     },
     {
-      "name": "Notification Management",
+      "name": "09 - Customer Self-Service",
+      "item": [
+        {
+          "name": "View Own Customer Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/customers/{{customerId}}"
+          }
+        },
+        {
+          "name": "View Own Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/notifications/customer/{{customerId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Notifications",
       "item": [
         {
           "name": "List Notifications",
@@ -419,13 +757,53 @@
           }
         },
         {
-          "name": "Get Customer Notifications",
+          "name": "Send Existing Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/notifications/{{customerApprovalNotificationId}}/send"
+          }
+        },
+        {
+          "name": "Send Payment Completed Notification For Bill",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/notifications/bill/{{billId}}/send-payment-completed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Legacy Prepaid Support",
+      "item": [
+        {
+          "name": "Electricity Prepaid Top-Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{financeToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"meterId\": {{electricityMeterId}},\n  \"amount\": 2000,\n  \"paymentMethod\": \"MOBILE_MONEY\",\n  \"transactionDate\": \"2026-06-05\"\n}"
+            },
+            "url": "{{baseUrl}}/api/prepaid/topup"
+          }
+        },
+        {
+          "name": "List Prepaid Transactions By Customer",
           "request": {
             "method": "GET",
             "header": [
               { "key": "Authorization", "value": "Bearer {{customerToken}}" }
             ],
-            "url": "{{baseUrl}}/api/notifications/customer/{{customerId}}"
+            "url": "{{baseUrl}}/api/prepaid/customer/{{customerId}}"
           }
         }
       ]

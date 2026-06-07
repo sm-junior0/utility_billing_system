@@ -44,9 +44,10 @@ public final class ResponseMapper {
 
     public static CustomerResponse toCustomerResponse(Customer customer) {
         Long ownerUserId = customer.getOwnerUser() != null ? customer.getOwnerUser().getId() : null;
+        String approvedBy = customer.getApprovedBy() != null ? customer.getApprovedBy().getFullNames() : null;
         return new CustomerResponse(customer.getId(), customer.getFullNames(), customer.getNationalId(), customer.getEmail(),
-                customer.getPhoneNumber(), customer.getAddress(), customer.getStatus(), ownerUserId, customer.getCreatedAt(),
-                customer.getUpdatedAt());
+                customer.getPhoneNumber(), customer.getAddress(), customer.getStatus(), ownerUserId, approvedBy,
+                customer.getApprovedAt(), customer.getCreatedAt(), customer.getUpdatedAt());
     }
 
     public static MeterResponse toMeterResponse(Meter meter) {

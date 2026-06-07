@@ -1,8 +1,10 @@
 package org.smj.utilitybilling.service;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.smj.utilitybilling.dto.request.CustomerProfileRequest;
 import org.smj.utilitybilling.dto.request.CustomerRequest;
 import org.smj.utilitybilling.dto.response.CustomerResponse;
 import org.smj.utilitybilling.dto.response.PageResponse;
@@ -35,11 +37,48 @@ public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final UserAccountRepository userAccountRepository;
+    private final CurrentUserService currentUserService;
+    private final NotificationService notificationService;
 
     @Transactional
     public CustomerResponse createCustomer(CustomerRequest request) {
         validateUniqueFields(request, null);
         Customer customer = buildCustomer(new Customer(), request);
+        return ResponseMapper.toCustomerResponse(customerRepository.save(customer));
+    }
+
+    @Transactional
+    public CustomerResponse submitCustomerProfile(CustomerProfileRequest request, String email) {
+        UserAccount ownerUser = currentUserService.getUserByEmail(email);
+        if (ownerUser.getStatus() != UserStatus.ACTIVE) {
+            throw new BadRequestException("Only ACTIVE users can submit a customer profile");
+        }
+        if (customerRepository.findByOwnerUserId(ownerUser.getId()).isPresent()) {
+            throw new BadRequestException("A customer profile is already linked to this user account");
+        }
+        customerRepository.findAll().forEach(existing -> {
+            if (existing.getNationalId().equals(request.getNationalId())) {
+                throw new BadRequestException("National ID is already registered");
+            }
+            if (existing.getEmail().equalsIgnoreCase(ownerUser.getEmail())) {
+                throw new BadRequestException("Customer email is already registered");
+            }
+            if (existing.getPhoneNumber().equals(ownerUser.getPhoneNumber())) {
+                throw new BadRequestException("Customer phone number is already registered");
+            }
+        });
+
+        Customer customer = Customer.builder()
+                .fullNames(ownerUser.getFullNames())
+                .nationalId(request.getNationalId())
+                .email(ownerUser.getEmail())
+                .phoneNumber(ownerUser.getPhoneNumber())
+                .address(request.getAddress())
+                .status(UserStatus.PENDING_APPROVAL)
+                .ownerUser(ownerUser)
+                .approvedBy(null)
+                .approvedAt(null)
+                .build();
         return ResponseMapper.toCustomerResponse(customerRepository.save(customer));
     }
 
@@ -76,10 +115,19 @@ public class CustomerService {
     }
 
     @Transactional
-    public CustomerResponse updateStatus(Long id, UserStatus status) {
+    public CustomerResponse updateStatus(Long id, UserStatus status, String actorEmail) {
         Customer customer = getCustomerEntity(id);
+        if (status == UserStatus.ACTIVE && customer.getStatus() == UserStatus.PENDING_APPROVAL) {
+            return approveCustomer(customer, actorEmail);
+        }
         customer.setStatus(status);
         return ResponseMapper.toCustomerResponse(customer);
+    }
+
+    @Transactional
+    public CustomerResponse approveCustomer(Long id, String actorEmail) {
+        Customer customer = getCustomerEntity(id);
+        return approveCustomer(customer, actorEmail);
     }
 
     public Customer getCustomerEntity(Long id) {
@@ -97,6 +145,10 @@ public class CustomerService {
         customer.setPhoneNumber(request.getPhoneNumber());
         customer.setAddress(request.getAddress());
         customer.setStatus(request.getStatus() == null ? UserStatus.ACTIVE : request.getStatus());
+        if (customer.getStatus() != UserStatus.ACTIVE) {
+            customer.setApprovedBy(null);
+            customer.setApprovedAt(null);
+        }
 
         if (request.getOwnerUserId() != null) {
             customer.setOwnerUser(resolveOwnerUser(request.getOwnerUserId(), customer.getId()));
@@ -112,7 +164,11 @@ public class CustomerService {
                         "Owner user with ID " + ownerUserId + " was not found. "
                                 + "Use GET /api/users after signup to get the real userId from the signup response or user list."
                 ));
-        if (ownerUser.getRole() != Role.ROLE_CUSTOMER) {
+        Customer existingLinkedCustomer = customerRepository.findByOwnerUserId(ownerUserId).orElse(null);
+        boolean sameLinkedCustomer = existingLinkedCustomer != null
+                && currentCustomerId != null
+                && existingLinkedCustomer.getId().equals(currentCustomerId);
+        if (!sameLinkedCustomer && ownerUser.getRole() != Role.ROLE_CUSTOMER) {
             throw new BadRequestException(
                     "Only users with ROLE_CUSTOMER can be linked to a customer. "
                             + "User " + ownerUserId + " (" + ownerUser.getEmail() + ") has role " + ownerUser.getRole() + "."
@@ -148,5 +204,17 @@ public class CustomerService {
                 throw new BadRequestException("Customer phone number is already registered");
             }
         });
+    }
+
+    private CustomerResponse approveCustomer(Customer customer, String actorEmail) {
+        if (customer.getStatus() != UserStatus.PENDING_APPROVAL) {
+            throw new BadRequestException("Only customer profiles in PENDING_APPROVAL can be approved");
+        }
+        UserAccount approver = currentUserService.getUserByEmail(actorEmail);
+        customer.setStatus(UserStatus.ACTIVE);
+        customer.setApprovedBy(approver);
+        customer.setApprovedAt(LocalDateTime.now());
+        notificationService.sendCustomerActivationNotification(customer);
+        return ResponseMapper.toCustomerResponse(customer);
     }
 }

@@ -86,15 +86,15 @@ Use these accounts for the full demo. **Write down IDs** from each API response 
 | Account | Login email | Password | Final role | Real inbox? | Email you receive |
 |---------|-------------|----------|------------|-------------|-------------------|
 | **Admin** | `admin@utility.rw` | `Admin@123` | ADMIN | No | None (pre-seeded, no OTP) |
-| **Alice (Customer)** | `jj3032205@gmail.com` | `Test@1234` | CUSTOMER | **YES — check jj3032205@gmail.com** | OTP at signup + **automatic** bill/payment emails |
-| **Eric (Operator)** | `operator@utility.rw` | `Test@1234` | OPERATOR | No | OTP only in database (see SQL below) |
-| **Fiona (Finance)** | `juniormanene@gmail.com` | `Test@1234` | FINANCE | **YES — check juniormanene@gmail.com** | OTP at signup |
+| **Alice (Customer)** | `juniormanene@gmail.com` | `Test@1234` | CUSTOMER | **YES — check juniormanene@gmail.com** | OTP at signup + **automatic** bill/payment emails |
+| **Eric (Operator)** | `jj3032205@gmail.com` | `Test@1234` | OPERATOR | **YES — check jj3032205@gmail.com** | OTP at signup |
+| **Fiona (Finance)** | `s.manene.jr@gmail.com` | `Test@1234` | FINANCE | **YES — check s.manene.jr@gmail.com** | OTP at signup |
 
 > **SMTP sender** is `juniormanene@gmail.com`. OTP and notification emails are **sent from** that address **to** the recipient email in each step.
 
 ### Customer profile email (for notification send)
 
-When creating Alice's **customer record**, use the same email `jj3032205@gmail.com`. Bill and full-payment emails are sent **automatically** to that address after Steps 10 and 12.
+When creating Alice's **customer record**, use the same email `juniormanene@gmail.com`. Bill and full-payment emails are sent **automatically** to that address after Steps 10 and 12.
 
 ### ID tracker — fill in as you go
 
@@ -135,7 +135,7 @@ When creating Alice's **customer record**, use the same email `jj3032205@gmail.c
 
 Run **three separate** signup calls:
 
-**1a. Alice (future customer) — OTP goes to jj3032205@gmail.com**
+**1a. Alice (future customer) — OTP goes to juniormanene@gmail.com**
 
 ```
 POST /api/auth/signup
@@ -144,7 +144,7 @@ POST /api/auth/signup
 ```json
 {
   "fullNames": "Alice Uwase",
-  "email": "jj3032205@gmail.com",
+  "email": "juniormanene@gmail.com",
   "phoneNumber": "250788123456",
   "password": "Test@1234"
 }
@@ -152,23 +152,23 @@ POST /api/auth/signup
 
 **Save from response:** `userId` → this is Alice's `ownerUserId` later.
 
-**1b. Eric (future operator) — OTP in database only**
+**1b. Eric (future operator) — OTP goes to jj3032205@gmail.com**
 
 ```json
 {
   "fullNames": "Eric Operator",
-  "email": "operator@utility.rw",
+  "email": "jj3032205@gmail.com",
   "phoneNumber": "250788111111",
   "password": "Test@1234"
 }
 ```
 
-**1c. Fiona (future finance) — OTP goes to juniormanene@gmail.com**
+**1c. Fiona (future finance) — OTP goes to s.manene.jr@gmail.com**
 
 ```json
 {
   "fullNames": "Fiona Finance",
-  "email": "juniormanene@gmail.com",
+  "email": "s.manene.jr@gmail.com",
   "phoneNumber": "250788222222",
   "password": "Test@1234"
 }
@@ -192,7 +192,18 @@ POST /api/auth/signup
 POST /api/auth/verify-otp
 ```
 
-**Alice:**
+**Alice (Customer):**
+
+```json
+{
+  "email": "juniormanene@gmail.com",
+  "otpCode": "000000"
+}
+```
+
+Replace `000000` with the 6-digit code from **juniormanene@gmail.com** inbox.
+
+**Eric (Operator):**
 
 ```json
 {
@@ -203,33 +214,16 @@ POST /api/auth/verify-otp
 
 Replace `000000` with the 6-digit code from **jj3032205@gmail.com** inbox.
 
-**Eric** — get OTP from database (no real inbox):
-
-```sql
-SELECT email, otp_code, expires_at, used
-FROM otp_verifications
-WHERE email = 'operator@utility.rw'
-ORDER BY created_at DESC
-LIMIT 1;
-```
+**Fiona (Finance):**
 
 ```json
 {
-  "email": "operator@utility.rw",
-  "otpCode": "PASTE_FROM_DB"
-}
-```
-
-**Fiona:**
-
-```json
-{
-  "email": "juniormanene@gmail.com",
+  "email": "s.manene.jr@gmail.com",
   "otpCode": "000000"
 }
 ```
 
-Replace with code from **juniormanene@gmail.com** inbox.
+Replace with code from **s.manene.jr@gmail.com** inbox.
 
 **Expected:** `"OTP verified successfully..."` — users become `ACTIVE`.
 
@@ -294,9 +288,9 @@ Confirm:
 | Email | Role | Status |
 |-------|------|--------|
 | admin@utility.rw | ROLE_ADMIN | ACTIVE |
-| jj3032205@gmail.com | ROLE_CUSTOMER | ACTIVE |
-| operator@utility.rw | ROLE_CUSTOMER | ACTIVE |
 | juniormanene@gmail.com | ROLE_CUSTOMER | ACTIVE |
+| jj3032205@gmail.com | ROLE_CUSTOMER | ACTIVE |
+| s.manene.jr@gmail.com | ROLE_CUSTOMER | ACTIVE |
 
 ---
 
@@ -350,7 +344,7 @@ POST /api/customers
 {
   "fullNames": "Alice Uwase",
   "nationalId": "1199912345678901",
-  "email": "jj3032205@gmail.com",
+  "email": "juniormanene@gmail.com",
   "phoneNumber": "250788123456",
   "address": "Kigali, Gasabo",
   "status": "ACTIVE",
@@ -526,12 +520,14 @@ POST /api/auth/login
 
 ```json
 {
-  "email": "operator@utility.rw",
+  "email": "jj3032205@gmail.com",
   "password": "Test@1234"
 }
 ```
 
 **Authorize Swagger** with operator token.
+
+> Operator login email: `jj3032205@gmail.com`
 
 **Swagger:** `06 - Meter Reading Operations`
 
@@ -566,7 +562,7 @@ Login as Fiona:
 
 ```json
 {
-  "email": "juniormanene@gmail.com",
+  "email": "s.manene.jr@gmail.com",
   "password": "Test@1234"
 }
 ```
@@ -593,7 +589,7 @@ POST /api/bills/generate
 - `outstandingBalance` = `totalAmount`
 - `dueDate` = today + 15 days
 - **PostgreSQL trigger** creates a `BILL_GENERATED` notification
-- **Email sent automatically** to customer email (`jj3032205@gmail.com`)
+- **Email sent automatically** to customer email (`juniormanene@gmail.com`)
 - **Save `id` and `billReference`**
 
 **Verify:** `GET /api/bills` and `GET /api/notifications` — you should see a new notification row.
@@ -657,7 +653,7 @@ First check remaining balance: `GET /api/bills/{id}`
 - **PostgreSQL trigger** creates `PAYMENT_COMPLETED` notification
 - **Email sent automatically** to customer email on full payment
 
-**Verify:** `GET /api/payments/bill/{billId}` and check **jj3032205@gmail.com** inbox.
+**Verify:** `GET /api/payments/bill/{billId}` and check **juniormanene@gmail.com** inbox.
 
 ---
 
@@ -686,7 +682,7 @@ Login as Alice:
 
 ```json
 {
-  "email": "jj3032205@gmail.com",
+  "email": "juniormanene@gmail.com",
   "password": "Test@1234"
 }
 ```
@@ -856,4 +852,26 @@ Suggested variables: `baseUrl`, `adminToken`, `operatorToken`, `financeToken`, `
 - **Customer isolation:** `ownerUserId` link — customers see only their data
 - **Billing:** Reading → tariff/tax/charge calculation → bill → approve → pay
 - **Database routines:** Triggers auto-insert notifications; cursor procedure for late penalties
-- **Emails:** OTP to signup address; notifications to customer profile email (`jj3032205@gmail.com` for Alice)
+- **Emails:** OTP to signup address; notifications to customer profile email (`juniormanene@gmail.com` for Alice)
+
+---
+
+## Customer Approval Flow Addendum
+
+Use this flow in the current build when demoing self-service onboarding:
+
+1. Call `POST /api/auth/signup` with `fullNames`, `email`, `phoneNumber`, and `password`.
+2. Verify the OTP with `POST /api/auth/verify-otp`.
+3. Log in as the customer with `POST /api/auth/login`.
+4. Call `POST /api/customers/profile-request` with:
+
+```json
+{
+  "nationalId": "1199912345678901",
+  "address": "Kigali, Gasabo"
+}
+```
+
+5. Log in as admin and approve the profile with `PUT /api/customers/{id}/approve`.
+6. Confirm the customer response now shows `status = ACTIVE`, plus `approvedBy` and `approvedAt`.
+7. Open `GET /api/notifications/customer/{customerId}` to confirm the `ACCOUNT_ACTIVATED` notification exists.

@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.smj.utilitybilling.dto.response.NotificationResponse;
 import org.smj.utilitybilling.dto.response.PageResponse;
 import org.smj.utilitybilling.entity.Bill;
+import org.smj.utilitybilling.entity.Customer;
 import org.smj.utilitybilling.entity.Notification;
 import org.smj.utilitybilling.enums.NotificationStatus;
 import org.smj.utilitybilling.enums.NotificationType;
@@ -99,6 +100,13 @@ public class NotificationService {
         return ResponseMapper.toNotificationResponse(notification);
     }
 
+    @Transactional
+    public NotificationResponse sendCustomerActivationNotification(Customer customer) {
+        Notification notification = notificationRepository.save(buildCustomerActivationNotification(customer));
+        deliverEmail(notification);
+        return ResponseMapper.toNotificationResponse(notification);
+    }
+
     /**
      * Sends email for any notification still marked PENDING (for example rows created only by DB triggers).
      */
@@ -129,6 +137,16 @@ public class NotificationService {
                 .build();
     }
 
+    private Notification buildCustomerActivationNotification(Customer customer) {
+        return Notification.builder()
+                .customer(customer)
+                .bill(null)
+                .message(buildCustomerActivationMessage(customer))
+                .type(NotificationType.ACCOUNT_ACTIVATED)
+                .status(NotificationStatus.PENDING)
+                .build();
+    }
+
     static String buildBillGeneratedMessage(Bill bill) {
         return "Dear " + bill.getCustomer().getFullNames() + ",\nYour "
                 + String.format("%02d", bill.getBillingMonth()) + "/" + bill.getBillingYear()
@@ -139,6 +157,15 @@ public class NotificationService {
         return "Dear " + bill.getCustomer().getFullNames() + ",\nYour "
                 + String.format("%02d", bill.getBillingMonth()) + "/" + bill.getBillingYear()
                 + " utility bill of " + bill.getTotalAmount() + " FRW has been successfully paid.";
+    }
+
+    static String buildCustomerActivationMessage(Customer customer) {
+        return "Dear " + customer.getFullNames() + ",\n\n"
+                + "Your utility customer account has been reviewed and approved successfully. "
+                + "You can now access utility services, view bills, payment history, notifications, "
+                + "and other customer features.\n\n"
+                + "Thank you for choosing WASAC/REG Utility Billing System.\n\n"
+                + "Regards,\nWASAC/REG Utility Billing Team";
     }
 
     private void deliverEmail(Notification notification) {
@@ -168,6 +195,7 @@ public class NotificationService {
         return switch (type) {
             case BILL_GENERATED -> "Utility Billing - Bill Generated";
             case PAYMENT_COMPLETED -> "Utility Billing - Payment Completed";
+            case ACCOUNT_ACTIVATED -> "Account Activation Successful";
             case GENERAL -> "Utility Billing Notification";
         };
     }

@@ -19,7 +19,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Schema(
-        description = "Capture one monthly reading for an active meter. Use a new month/year for each new bill.",
+        description = "Capture one monthly reading for an active meter. Use a new month/year for each new bill. The reading date must be on or after the meter installation date.",
         example = """
                 {
                   "meterId": 1,
@@ -47,7 +47,7 @@ public class MeterReadingRequest {
 
     @NotNull(message = "Reading date is required")
     @PastOrPresent(message = "Reading date cannot be in the future")
-    @Schema(example = "2026-08-01", description = "Date of the reading. Only one reading is allowed per meter per month/year.")
+    @Schema(example = "2026-08-01", description = "Date of the reading. Only one reading is allowed per meter per month/year, and the date cannot be before the meter installation date.")
     private LocalDate readingDate;
 
     @JsonIgnore

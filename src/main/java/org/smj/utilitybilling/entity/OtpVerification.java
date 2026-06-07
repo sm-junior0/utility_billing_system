@@ -2,6 +2,8 @@ package org.smj.utilitybilling.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -13,6 +15,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.smj.utilitybilling.enums.OtpPurpose;
 /**
  * JPA entity mapped to the otpverification database table.
  */
@@ -35,6 +38,10 @@ public class OtpVerification {
 
     @Column(name = "otp_code", nullable = false, length = 6)
     private String otpCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "purpose", nullable = false, length = 30)
+    private OtpPurpose purpose;
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;

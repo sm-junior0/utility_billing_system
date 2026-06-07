@@ -15,6 +15,8 @@ public record CustomerResponse(
         String address,
         UserStatus status,
         Long ownerUserId,
+        String approvedBy,
+        LocalDateTime approvedAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {

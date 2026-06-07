@@ -2,6 +2,7 @@ package org.smj.utilitybilling.service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.smj.utilitybilling.dto.request.TariffRequest;
 import org.smj.utilitybilling.dto.request.TariffTierRequest;
@@ -64,12 +65,16 @@ public class TariffService {
         return ResponseMapper.toTariffResponse(tariff, tariffTierRepository.findByTariffIdOrderByMinUnitsAsc(tariff.getId()));
     }
 
-    public Tariff getApplicableTariff(MeterType meterType, LocalDate billingDate) {
+    public Optional<Tariff> findApplicableTariff(MeterType meterType, LocalDate billingDate) {
         return tariffRepository
                 .findFirstByMeterTypeAndActiveTrueAndEffectiveFromLessThanEqualAndEffectiveToGreaterThanEqualOrderByVersionDesc(
                         meterType, billingDate, billingDate)
                 .or(() -> tariffRepository.findFirstByMeterTypeAndActiveTrueAndEffectiveFromLessThanEqualAndEffectiveToIsNullOrderByVersionDesc(
-                        meterType, billingDate))
+                        meterType, billingDate));
+    }
+
+    public Tariff getApplicableTariff(MeterType meterType, LocalDate billingDate) {
+        return findApplicableTariff(meterType, billingDate)
                 .orElseThrow(() -> new ResourceNotFoundException("No active tariff found for the selected meter type"));
     }
 

@@ -6,5 +6,6 @@ package org.smj.utilitybilling.enums;
 public enum NotificationType {
     BILL_GENERATED,
     PAYMENT_COMPLETED,
+    ACCOUNT_ACTIVATED,
     GENERAL
 }

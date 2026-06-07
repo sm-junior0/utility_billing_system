@@ -5,6 +5,7 @@ package org.smj.utilitybilling.enums;
 
 public enum UserStatus {
     ACTIVE,
+    PENDING_APPROVAL,
     PENDING_VERIFICATION,
     INACTIVE
 }
